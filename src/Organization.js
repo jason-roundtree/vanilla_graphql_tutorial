@@ -1,4 +1,4 @@
-// import React from 'react';
+// import React from 'react'
 // import Repository from './Repository'
 
 // export default function Organization({ organization, errors, onFetchMoreIssues }) {

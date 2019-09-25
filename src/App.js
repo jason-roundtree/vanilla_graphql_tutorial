@@ -62,6 +62,16 @@ const ADD_STAR = `
   }
 `
 
+const REMOVE_STAR = `
+  mutation($repositoryId: ID!) {
+    removeStar(input: {starrableId: $repositoryId}) {
+      starrable {
+        viewerHasStarred
+      }
+    }
+  }
+`
+
 const getIssuesOfRepository = (path, cursor) => {
   const [organization, repository] = path.split('/');
   return axiosGitHubGraphQL.post('', {
@@ -98,14 +108,21 @@ const resolveIssuesQuery = (queryResult, cursor) => state => {
   };
 };
 
-const addStartToRepository = repositoryId => {
+const addStarToRepository = repositoryId => {
   return axiosGitHubGraphQL.post('', {
     query: ADD_STAR,
     variables: { repositoryId }
   })
 }
 
-const resolveAddStartMutation = mutationResult => state => {
+const removeStarFromRepository = repositoryId => {
+  return axiosGitHubGraphQL.post('', {
+    query: REMOVE_STAR,
+    variables: { repositoryId }
+  })
+}
+
+const resolveAddStarMutation = mutationResult => state => {
   const { viewerHasStarred } = mutationResult.data.data.addStar.starrable
   const { totalCount } = state.organization.repository.stargazers
 
@@ -118,6 +135,25 @@ const resolveAddStartMutation = mutationResult => state => {
         viewerHasStarred,
         stargazers: {
           totalCount: totalCount + 1
+        }
+      }
+    }
+  }
+}
+
+const resolveRemoveStarMutation = mutationResult => state => {
+  const { viewerHasStarred } = mutationResult.data.data.removeStar.starrable
+  const { totalCount } = state.organization.repository.stargazers
+
+  return {
+    ...state,
+    organization: {
+      ...state.organization,
+      repository: {
+        ...state.organization.repository,
+        viewerHasStarred,
+        stargazers: {
+          totalCount: totalCount - 1
         }
       }
     }
@@ -141,7 +177,6 @@ class App extends Component {
 
   onSubmit = event => {
     this.onFetchFromGitHub(this.state.path);
-
     event.preventDefault();
   };
 
@@ -160,9 +195,15 @@ class App extends Component {
   };
 
   onStarRepository = (repositoryId, viewerHasStarred) => {
-    addStartToRepository(repositoryId).then(mutationResult =>
-      this.setState(resolveAddStartMutation(mutationResult))
-    )
+    if (!viewerHasStarred) {
+      addStarToRepository(repositoryId).then(mutationResult =>
+        this.setState(resolveAddStarMutation(mutationResult))
+      )
+    } else {
+      removeStarFromRepository(repositoryId).then(mutationResult => 
+        this.setState(resolveRemoveStarMutation(mutationResult))
+      )
+    }
   }
 
   render() {
